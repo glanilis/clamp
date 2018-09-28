@@ -1,0 +1,34 @@
+version: '2'
+
+services:
+  db:
+    image: mariadb:10.1.11
+    volumes:
+      - "/var/lib/mysql"
+      - "../mariadb/conf1:/etc/mysql/conf.d:ro"
+      - "../../sql/:/docker-entrypoint-initdb.d:ro"
+    environment:
+      - MYSQL_ROOT_PASSWORD=strong_pitchou
+    ports:
+      - "3306:3306"
+
+  clamp:
+    image: onap/clamp
+    volumes:
+      - "./config/:/opt/clamp/config:rw"
+    depends_on:
+      - db
+    env_file:
+      - clamp.env
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+
+  third_party_proxy:
+    image: python:2-slim
+    volumes:
+      - "../../../src/test/resources/http-cache/example/:/thirdparty:rw"
+      - "../../../src/test/resources/http-cache/:/script/:ro"
+    ports:
+      - "8085:8085"
+    command: /bin/sh -c "pip install requests &&  pip install simplejson && python -u /script/third_party_proxy.py -v true --port 8085 --root /thirdparty --proxyaddress third_party_proxy:8085"
